@@ -4,7 +4,8 @@
   "description": "Captura artigos do CoinTelegraph e disponibiliza em JSON",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "postinstall": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npm install puppeteer@latest"
   },
   "dependencies": {
     "puppeteer": "^24.10.2",
