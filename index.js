@@ -13,7 +13,6 @@ async function fetchArticles() {
   const rssUrl = 'https://br.cointelegraph.com/rss';
   const feed = await parser.parseURL(rssUrl);
 
-  // Puppeteer configurado para headless + args para servidor Render
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -49,7 +48,7 @@ async function fetchArticles() {
   console.log('✅ Artigos salvos em artigos.json');
 }
 
-// Rota para disponibilizar JSON
+// Rota JSON pública
 app.get('/artigos', (req, res) => {
   if (fs.existsSync(JSON_FILE)) {
     const data = fs.readFileSync(JSON_FILE, 'utf-8');
@@ -60,9 +59,7 @@ app.get('/artigos', (req, res) => {
   }
 });
 
-// Inicia servidor Express
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-  // Captura os artigos na inicialização
   fetchArticles();
 });
