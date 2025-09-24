@@ -1,8 +1,14 @@
 const puppeteer = require('puppeteer');
 const RSSParser = require('rss-parser');
+const express = require('express');
 const fs = require('fs');
+const path = require('path');
 
-(async () => {
+const app = express();
+const PORT = process.env.PORT || 3000;
+const JSON_FILE = path.join(__dirname, 'artigos.json');
+
+async function fetchArticles() {
   const parser = new RSSParser();
   const rssUrl = 'https://br.cointelegraph.com/rss';
   const feed = await parser.parseURL(rssUrl);
@@ -14,6 +20,7 @@ const fs = require('fs');
 
   for (const item of feed.items) {
     const { title, link } = item;
+    console.log('Capturando:', title);
 
     try {
       await page.goto(link, { waitUntil: 'networkidle2' });
@@ -34,6 +41,24 @@ const fs = require('fs');
 
   await browser.close();
 
-  // Salva JSON para o site consumir
-  fs.writeFileSync('artigos.json', JSON.stringify(artigos, null, 2), 'utf-8');
-})();
+  fs.writeFileSync(JSON_FILE, JSON.stringify(artigos, null, 2), 'utf-8');
+  console.log('✅ Artigos salvos em artigos.json');
+}
+
+// Rota para disponibilizar JSON para o site
+app.get('/artigos', (req, res) => {
+  if (fs.existsSync(JSON_FILE)) {
+    const data = fs.readFileSync(JSON_FILE, 'utf-8');
+    res.setHeader('Content-Type', 'application/json');
+    res.send(data);
+  } else {
+    res.json([]);
+  }
+});
+
+// Inicia servidor Express
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+  // Executa a captura de artigos na inicialização
+  fetchArticles();
+});
