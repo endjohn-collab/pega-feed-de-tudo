@@ -13,7 +13,11 @@ async function fetchArticles() {
   const rssUrl = 'https://br.cointelegraph.com/rss';
   const feed = await parser.parseURL(rssUrl);
 
-  const browser = await puppeteer.launch({ headless: true });
+  // Puppeteer configurado para headless + args para servidor Render
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
   const page = await browser.newPage();
 
   const artigos = [];
@@ -45,7 +49,7 @@ async function fetchArticles() {
   console.log('✅ Artigos salvos em artigos.json');
 }
 
-// Rota para disponibilizar JSON para o site
+// Rota para disponibilizar JSON
 app.get('/artigos', (req, res) => {
   if (fs.existsSync(JSON_FILE)) {
     const data = fs.readFileSync(JSON_FILE, 'utf-8');
@@ -59,6 +63,6 @@ app.get('/artigos', (req, res) => {
 // Inicia servidor Express
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-  // Executa a captura de artigos na inicialização
+  // Captura os artigos na inicialização
   fetchArticles();
 });
