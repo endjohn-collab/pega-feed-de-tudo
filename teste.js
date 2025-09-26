@@ -4,40 +4,46 @@ const RSSParser = require('rss-parser');
 const fs = require('fs');
 const path = require('path');
 const ftp = require('basic-ftp');
+const express = require('express');
 
+// =====================
+// Configurações
+// =====================
 const JSON_FILE = path.join(__dirname, 'artigos.json');
 const LOG_FILE = path.join(__dirname, 'roda-feed.log');
-
 const RSS_FEEDS = [
-  'https://br.cointelegraph.com/rss',
-  'https://www.geekwire.com/feed/',
-  'https://g1.globo.com/rss/g1/',
-  'https://boingboing.net/feed',
-  'https://www.careergeekblog.com/feed/',
-  'https://www.wired.com/feed/category/gear/latest/rss',
-  'https://www.wired.com/feed/category/ideas/latest/rss',
-  'https://www.wired.com/feed/category/security/latest/rss',
-  'https://www.wired.com/feed/category/science/latest/rss',
-  'https://www.wired.com/feed/category/culture/latest/rss',
-  'https://www.wired.com/feed/tag/ai/latest/rss',
+  //'https://br.cointelegraph.com/rss',
+  //'https://www.geekwire.com/feed/',
+  //'https://g1.globo.com/rss/g1/',
+  //'https://boingboing.net/feed',
+  //'https://www.careergeekblog.com/feed/',
+  //'https://www.wired.com/feed/category/gear/latest/rss',
+  //'https://www.wired.com/feed/category/ideas/latest/rss',
+  //'https://www.wired.com/feed/category/security/latest/rss',
+  //'https://www.wired.com/feed/category/science/latest/rss',
+  //'https://www.wired.com/feed/category/culture/latest/rss',
+  //'https://www.wired.com/feed/tag/ai/latest/rss',
   'https://www.wired.com/feed/category/backchannel/latest/rss'
 ];
-
 const MAX_ARTICLES = 1000;
+const INTERVAL = 1000 * 60 * 60; // 1 hora
 
-// Função de log
+// =====================
+// Funções auxiliares
+// =====================
 function log(msg) {
   const timestamp = new Date().toISOString();
   fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`, 'utf-8');
   console.log(msg);
 }
 
-// Filtra imagens válidas
 function filterImages(urls) {
   return urls.filter(url => /\.(jpe?g|png|gif|webp)$/i.test(url));
 }
 
-// Captura conteúdo da página e imagens
+// =====================
+// Captura conteúdo HTML e imagens
+// =====================
 async function fetchPageContent(url) {
   try {
     const { data } = await axios.get(url, { timeout: 15000 });
@@ -63,7 +69,9 @@ async function fetchPageContent(url) {
   }
 }
 
+// =====================
 // Captura artigos de um feed RSS
+// =====================
 async function fetchFeed(rssUrl, existingArticles) {
   const parser = new RSSParser();
   let feed;
@@ -119,7 +127,9 @@ async function fetchFeed(rssUrl, existingArticles) {
   return newArticles;
 }
 
-// Loop principal (em série para reduzir consumo)
+// =====================
+// Loop principal
+// =====================
 async function fetchAllFeeds() {
   let existingArticles = [];
   if (fs.existsSync(JSON_FILE)) {
@@ -136,7 +146,6 @@ async function fetchAllFeeds() {
   let allNewArticles = allNewArticlesArrays.flat();
   let allArticles = [...existingArticles, ...allNewArticles];
 
-  // Remove duplicados
   allArticles = allArticles.filter((a, index, self) => index === self.findIndex(b => b.guid === a.guid));
   allArticles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   allArticles = allArticles.slice(0, MAX_ARTICLES);
@@ -145,7 +154,9 @@ async function fetchAllFeeds() {
   log(`✅ Artigos atualizados! Total: ${allArticles.length}`);
 }
 
+// =====================
 // Upload FTP
+// =====================
 async function uploadToHostGator() {
   const client = new ftp.Client();
   client.ftp.verbose = true;
@@ -165,12 +176,36 @@ async function uploadToHostGator() {
   client.close();
 }
 
-// Executa
-(async () => {
+// =====================
+// Inicialização
+// =====================
+async function runFeeds() {
   try {
+    log('🔄 Iniciando captura de feeds...');
     await fetchAllFeeds();
     await uploadToHostGator();
+    log('✅ Captura finalizada!');
   } catch (err) {
     log(`❌ Erro inesperado: ${err.message}`);
   }
-})();
+}
+
+// Rodar na inicialização
+runFeeds();
+
+// Rodar periodicamente
+setInterval(runFeeds, INTERVAL);
+
+// =====================
+// Express para manter processo vivo
+// =====================
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => {
+  res.send('RSS Web Service ativo!');
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
