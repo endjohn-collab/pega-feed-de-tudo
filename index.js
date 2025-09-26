@@ -1,102 +1,116 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const RSSParser = require('rss-parser');
 const fs = require('fs');
 const path = require('path');
+const ftp = require('basic-ftp');
+const express = require('express');
 
-puppeteer.use(StealthPlugin());
-
+// =====================
+// Configurações
+// =====================
 const JSON_FILE = path.join(__dirname, 'artigos.json');
-const SELECTORS = [
-  'div.post-content',
-  'div.article-body',
-  'article',
-  'div.entry-content',
-  'div#content'
-];
+const LOG_FILE = path.join(__dirname, 'roda-feed.log');
+const INTERVAL = 1000 * 60 * 60; // 1 hora
+const MAX_ARTICLES = 1000;
 
-const RSS_FEEDS = [
-  'https://br.cointelegraph.com/rss',
-  'https://www.geekwire.com/feed/',
-  'https://g1.globo.com/rss/g1/'
-];
+// Geradores
+const noticias = require('./geradores/noticias');
+const geek = require('./geradores/geek');
+const tech = require('./geradores/tech');
 
-const MAX_ARTICLES = 200;
-const ARTICLE_DELAY = 1000; // 1 segundo
+// =====================
+// Funções auxiliares
+// =====================
+function log(msg) {
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`, 'utf-8');
+    console.log(msg);
+}
 
-async function fetchFeed(rssUrl, page, existingArticles) {
-  const parser = new RSSParser();
-  const feed = await parser.parseURL(rssUrl);
-  const newArticles = [];
+// =====================
+// Captura todos feeds e gera JSON
+// =====================
+async function gerarTodosFeeds() {
+    log('🔄 Iniciando captura de feeds...');
 
-  for (const item of feed.items) {
-    const { title, link, guid } = item;
+    let artigos = [];
 
-    // Evita duplicatas pelo guid
-    if (existingArticles.some(a => a.guid === guid)) continue;
+    // Executa cada gerador e adiciona categoria
+    const feedsNoticias = await noticias();
+    feedsNoticias.forEach(a => {
+        a.categoria = 'NOTICIAS';
+        log(`📰 Capturado: ${a.title}`);
+    });
 
-    console.log('Capturando:', title);
+    const feedsGeek = await geek();
+    feedsGeek.forEach(a => {
+        a.categoria = 'GEEK';
+        log(`🤓 Capturado: ${a.title}`);
+    });
 
+    const feedsTech = await tech();
+    feedsTech.forEach(a => {
+        a.categoria = 'TECH';
+        log(`💻 Capturado: ${a.title}`);
+    });
+
+    // Junta tudo e remove duplicados pelo guid
+    artigos = [...feedsNoticias, ...feedsGeek, ...feedsTech];
+    artigos = artigos.filter((a, i, arr) => i === arr.findIndex(b => b.guid === a.guid));
+    
+    // Limita total de artigos
+    artigos.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    artigos = artigos.slice(0, MAX_ARTICLES);
+
+    // Salva JSON localmente
+    fs.writeFileSync(JSON_FILE, JSON.stringify(artigos, null, 2), 'utf-8');
+    log(`✅ Feed atualizado. Total de artigos: ${artigos.length}`);
+
+    // Envia para FTP
+    await uploadToHostGator();
+}
+
+// =====================
+// Upload FTP
+// =====================
+async function uploadToHostGator() {
+    const client = new ftp.Client();
+    client.ftp.verbose = true;
     try {
-      await page.goto(link, { waitUntil: 'networkidle2', timeout: 30000 });
-
-      const content = await page.evaluate((SELECTORS) => {
-        for (let selector of SELECTORS) {
-          const el = document.querySelector(selector);
-          if (el && el.innerText.trim().length > 50) return el.innerText.trim();
-        }
-        return Array.from(document.body.querySelectorAll('*'))
-          .filter(el => el.offsetParent !== null)
-          .map(el => el.innerText)
-          .join('\n')
-          .trim();
-      }, SELECTORS);
-
-      if (!content) continue;
-
-      newArticles.push({ title, link, guid, content });
-
-      // Delay compatível com todas as versões do Puppeteer
-      await new Promise(resolve => setTimeout(resolve, ARTICLE_DELAY));
-
+        await client.access({
+            host: "ftp.johnporto.com.br",
+            user: "rss@johnporto.com.br",
+            password: "+2{3-OZ.OMpS",
+            secure: false
+        });
+        log("🔄 Conectado ao FTP. Enviando artigos.json...");
+        await client.uploadFrom(JSON_FILE, "artigos.json");
+        log("✅ Upload concluído!");
     } catch (err) {
-      console.error('Erro ao acessar', link, err.message);
+        log(`⚠️ Erro no FTP: ${err.message}`);
     }
-  }
-
-  return newArticles;
+    client.close();
 }
 
-async function fetchAllFeeds() {
-  let existingArticles = [];
-  if (fs.existsSync(JSON_FILE)) {
-    existingArticles = JSON.parse(fs.readFileSync(JSON_FILE, 'utf-8'));
-  }
-
-  const browser = await puppeteer.launch({
-    headless: true, // sem abrir janela
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
-
-  let allNewArticles = [];
-
-  for (const feed of RSS_FEEDS) {
-    const articlesFromFeed = await fetchFeed(feed, page, existingArticles.concat(allNewArticles));
-    allNewArticles = allNewArticles.concat(articlesFromFeed);
-  }
-
-  await browser.close();
-
-  let allArticles = [...existingArticles, ...allNewArticles];
-  if (allArticles.length > MAX_ARTICLES) {
-    allArticles = allArticles.slice(-MAX_ARTICLES);
-  }
-
-  fs.writeFileSync(JSON_FILE, JSON.stringify(allArticles, null, 2), 'utf-8');
-  console.log(`✅ Artigos atualizados! Total: ${allArticles.length}`);
+// =====================
+// Inicialização
+// =====================
+async function runFeeds() {
+    try {
+        await gerarTodosFeeds();
+    } catch (err) {
+        log(`❌ Erro inesperado: ${err.message}`);
+    }
 }
 
-fetchAllFeeds();
+// Rodar na inicialização
+runFeeds();
+
+// Rodar periodicamente
+setInterval(runFeeds, INTERVAL);
+
+// =====================
+// Express para manter processo vivo
+// =====================
+const app = express();
+const PORT = process.env.PORT || 10000;
+app.get('/', (req, res) => res.send('Estamos VIVOS e rodando JSON a cada 1 hora!'));
+app.listen(PORT, () => log(`Servidor rodando na porta ${PORT}`));
