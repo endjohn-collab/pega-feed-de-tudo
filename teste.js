@@ -1,4 +1,4 @@
-tamos const axios = require('axios');
+const axios = require('axios');
 const cheerio = require('cheerio');
 const RSSParser = require('rss-parser');
 const fs = require('fs');
@@ -209,4 +209,5 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+
 
