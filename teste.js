@@ -1,4 +1,4 @@
-const axios = require('axios');
+tamos const axios = require('axios');
 const cheerio = require('cheerio');
 const RSSParser = require('rss-parser');
 const fs = require('fs');
@@ -203,9 +203,10 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-  res.send('RSS Web Service ativo!');
+  res.send('Estamos VIVOS e rodando JSON a cada 1 hora!');
 });
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+
