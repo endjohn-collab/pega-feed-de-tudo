@@ -7,6 +7,7 @@ const ftp = require('basic-ftp');
 
 const JSON_FILE = path.join(__dirname, 'artigos.json');
 const LOG_FILE = path.join(__dirname, 'roda-feed.log');
+
 const RSS_FEEDS = [
   'https://br.cointelegraph.com/rss',
   'https://www.geekwire.com/feed/',
@@ -31,12 +32,12 @@ function log(msg) {
   console.log(msg);
 }
 
-// Função para filtrar URLs de imagens
+// Filtra imagens válidas
 function filterImages(urls) {
   return urls.filter(url => /\.(jpe?g|png|gif|webp)$/i.test(url));
 }
 
-// Captura conteúdo HTML e imagens
+// Captura conteúdo da página e imagens
 async function fetchPageContent(url) {
   try {
     const { data } = await axios.get(url, { timeout: 15000 });
@@ -52,7 +53,6 @@ async function fetchPageContent(url) {
     }
     if (!text) text = $('body').text().trim();
 
-    // Pega imagens
     const imgEls = $('img').map((i, el) => $(el).attr('src')).get();
     const images = filterImages(imgEls);
 
@@ -80,14 +80,12 @@ async function fetchFeed(rssUrl, existingArticles) {
     const { title, link, guid, pubDate, contentSnippet, enclosure, 'media:content': mediaContent, ...rest } = item;
     const normalizedLink = link && link.startsWith('http') ? link : null;
     if (!normalizedLink) continue;
-
     if (existingArticles.some(a => a.guid === guid || a.link === normalizedLink)) continue;
 
     log(`Capturando artigo: ${title}`);
 
     let pageContent = contentSnippet || '';
     let pageImages = [];
-
     const pageData = await fetchPageContent(normalizedLink);
     if (pageData.text) pageContent = pageData.text;
     pageImages = pageData.images;
@@ -121,16 +119,19 @@ async function fetchFeed(rssUrl, existingArticles) {
   return newArticles;
 }
 
-// Loop principal
+// Loop principal (em série para reduzir consumo)
 async function fetchAllFeeds() {
   let existingArticles = [];
   if (fs.existsSync(JSON_FILE)) {
     existingArticles = JSON.parse(fs.readFileSync(JSON_FILE, 'utf-8'));
   }
 
-  const allNewArticlesArrays = await Promise.all(
-    RSS_FEEDS.map(feed => fetchFeed(feed, existingArticles))
-  );
+  const allNewArticlesArrays = [];
+  for (const feed of RSS_FEEDS) {
+    const articles = await fetchFeed(feed, existingArticles);
+    allNewArticlesArrays.push(articles);
+    await new Promise(r => setTimeout(r, 1000)); // pausa 1s entre feeds
+  }
 
   let allNewArticles = allNewArticlesArrays.flat();
   let allArticles = [...existingArticles, ...allNewArticles];
@@ -165,4 +166,11 @@ async function uploadToHostGator() {
 }
 
 // Executa
-fetchAllFeeds().then(() => uploadToHostGator());
+(async () => {
+  try {
+    await fetchAllFeeds();
+    await uploadToHostGator();
+  } catch (err) {
+    log(`❌ Erro inesperado: ${err.message}`);
+  }
+})();
