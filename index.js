@@ -8,7 +8,7 @@ const express = require('express');
 // =====================
 const JSON_FILE = path.join(__dirname, 'artigos.json');
 const LOG_FILE = path.join(__dirname, 'roda-feed.log');
-const INTERVAL = 1000 * 60 * 60; // 1 hora
+const INTERVAL = 1000 * 60 * 240; // 1 hora
 const MAX_ARTICLES = 1000;
 
 // Geradores
