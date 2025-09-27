@@ -3,7 +3,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 const RSS_FEEDS = [
-  'https://www.noticiasaominuto.com.br/rss/tech'
+  'https://www.noticiasaominuto.com.br/rss/tech',
+  'https://rss.uol.com.br/feed/tecnologia.xml'
 ];
 
 function filterImages(urls) {
@@ -118,4 +119,5 @@ module.exports = async function() {
 
   return articles;
 };
+
 
