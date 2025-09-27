@@ -14,7 +14,8 @@ const RSS_FEEDS = [
     'https://www.gazetadopovo.com.br/feed/rss/educacao.xml',
     'https://www.gazetadopovo.com.br/feed/rss/vida-e-cidadania.xml',
     'https://www.uol.com.br/vueland/api/?loadComponent=XmlFeedRss',
-    'https://agenciabrasil.ebc.com.br/radioagencia-nacional/rss/ultimasnoticias/feed.xml'
+    'https://agenciabrasil.ebc.com.br/radioagencia-nacional/rss/ultimasnoticias/feed.xml',
+    'https://reporterbrasil.org.br/categorias/noticias/feed/'
     
 ];
 
@@ -61,5 +62,6 @@ module.exports = async function() {
 
     return artigos;
 };
+
 
 
