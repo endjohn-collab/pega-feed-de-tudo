@@ -3,15 +3,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 const RSS_FEEDS = [
-    'https://www.diversetechgeek.com/feed/',
-    'https://www.wired.com/feed/category/gear/latest/rss',
-    'https://www.wired.com/feed/category/ideas/latest/rss',
-    'https://www.wired.com/feed/category/security/latest/rss',
-    'https://www.wired.com/feed/category/science/latest/rss',
-    'https://www.wired.com/feed/category/culture/latest/rss',
-    'https://www.wired.com/feed/tag/ai/latest/rss',
-    'https://www.wired.com/feed/category/backchannel/latest/rss',
-    'https://www.geekwire.com/feed/'
+    'https://www.noticiasaominuto.com.br/rss/cultura',
 ];
 
 function filterImages(urls) {
@@ -57,3 +49,4 @@ module.exports = async function() {
 
     return artigos;
 };
+
