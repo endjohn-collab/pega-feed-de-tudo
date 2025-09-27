@@ -3,7 +3,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 const RSS_FEEDS = [
-    'https://g1.globo.com/rss/g1/'
+    'https://g1.globo.com/rss/g1/',
+    'https://feeds.folha.uol.com.br/emcimadahora/rss091.xml',
+    'https://www.noticiasaominuto.com.br/rss/ultima-hora'
 ];
 
 function filterImages(urls) {
@@ -49,3 +51,4 @@ module.exports = async function() {
 
     return artigos;
 };
+
