@@ -53,6 +53,10 @@ async function gerarTodosFeeds() {
     // Junta tudo e remove duplicados pelo guid
     artigos = [...feedsNoticias, ...feedsGeek, ...feedsTech];
     artigos = artigos.filter((a, i, arr) => i === arr.findIndex(b => b.guid === a.guid));
+    
+    // Limita total de artigos
+    artigos.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    artigos = artigos.slice(0, MAX_ARTICLES);
 
     // Salva JSON localmente
     fs.writeFileSync(JSON_FILE, JSON.stringify(artigos, null, 2), 'utf-8');
@@ -85,15 +89,15 @@ async function uploadToHostGator() {
 }
 
 // =====================
-// Execução única
+// Execução manual única
 // =====================
 (async () => {
     try {
         await gerarTodosFeeds();
-        log('✅ Execução concluída. Processo parado.');
-        process.exit(0); // encerra o processo
+        log("🏁 Execução concluída. Encerrando processo...");
+        process.exit(0); // Finaliza o programa
     } catch (err) {
         log(`❌ Erro inesperado: ${err.message}`);
-        process.exit(1);
+        process.exit(1); // Finaliza com erro
     }
 })();
