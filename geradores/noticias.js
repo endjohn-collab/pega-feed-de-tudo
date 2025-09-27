@@ -5,7 +5,17 @@ const cheerio = require('cheerio');
 const RSS_FEEDS = [
     'https://g1.globo.com/rss/g1/',
     'https://feeds.folha.uol.com.br/emcimadahora/rss091.xml',
-    'https://www.noticiasaominuto.com.br/rss/ultima-hora'
+    'https://www.noticiasaominuto.com.br/rss/ultima-hora',
+    'https://www.noticiasaominuto.com.br/rss/politica',
+    'https://www.noticiasaominuto.com.br/rss/esporte',
+    'https://www.noticiasaominuto.com.br/rss/justica',
+    'https://www.gazetadopovo.com.br/feed/rss/economia.xml',
+    'https://www.gazetadopovo.com.br/feed/rss/ideias.xml',
+    'https://www.gazetadopovo.com.br/feed/rss/educacao.xml',
+    'https://www.gazetadopovo.com.br/feed/rss/vida-e-cidadania.xml',
+    'https://www.uol.com.br/vueland/api/?loadComponent=XmlFeedRss',
+    'https://agenciabrasil.ebc.com.br/radioagencia-nacional/rss/ultimasnoticias/feed.xml'
+    
 ];
 
 function filterImages(urls) {
@@ -51,4 +61,5 @@ module.exports = async function() {
 
     return artigos;
 };
+
 
